@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Scouting Pro - Final Version</title>
+    <style>
+        :root { --campo-verde: #2e7d32; --linea-blanca: rgba(255,255,255,0.7); }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #121212; color: white; overflow: hidden; height: 100vh; }
+        .header { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 10px; background: #1a1a1a; }
+        .score { grid-column: span 2; text-align: center; font-size: 1.2rem; font-weight: bold; color: #ff9800; margin-bottom: 4px; }
+        .btn-fase { padding: 12px; border: none; border-radius: 6px; font-weight: bold; color: white; opacity: 0.3; font-size: 0.85rem; text-transform: uppercase; }
+        .btn-fase.activo { opacity: 1; border: 2px solid white; transform: scale(1.02); }
+        .crono-bar { display: grid; grid-template-columns: 50px 1fr 140px; align-items: center; background: #222; padding: 5px 10px; border-bottom: 1px solid #444; }
+        .time { font-size: 1.4rem; font-weight: bold; font-family: monospace; text-align: center; }
+        .btn-match-status { background: #ff9800; color: black; border: none; padding: 8px; border-radius: 4px; font-weight: bold; font-size: 0.65rem; text-transform: uppercase; }
+        #contenedor-campo { position: relative; width: 96vw; height: 38vh; margin: 5px auto; background: var(--campo-verde); border: 2px solid white; border-radius: 4px; overflow: hidden; }
+        .linea-central { position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: var(--linea-blanca); }
+        .circulo-central { position: absolute; top: 50%; left: 50%; width: 60px; height: 60px; border: 2px solid var(--linea-blanca); border-radius: 50%; transform: translate(-50%, -50%); }
+        .area-grande-arriba { position: absolute; top: 0; left: 20%; width: 60%; height: 45px; border: 2px solid var(--linea-blanca); border-top: none; }
+        .area-chica-arriba { position: absolute; top: 0; left: 35%; width: 30%; height: 15px; border: 2px solid var(--linea-blanca); border-top: none; }
+        .area-grande-abajo { position: absolute; bottom: 0; left: 20%; width: 60%; height: 45px; border: 2px solid var(--linea-blanca); border-bottom: none; }
+        .area-chica-abajo { position: absolute; bottom: 0; left: 35%; width: 30%; height: 15px; border: 2px solid var(--linea-blanca); border-bottom: none; }
+        #grilla-clicks { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; z-index: 10; }
+        .zona-click { border: 0.5px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.6rem; color: rgba(255,255,255,0.3); text-align: center; }
+        .stat-incidencia { font-size: 0.8rem; font-weight: bold; display: none; color: black; line-height: 1.1; }
+        #historial-log { height: 80px; margin: 5px 10px; background: #111; border-radius: 6px; border: 1px solid #333; overflow-y: scroll; padding: 5px; font-size: 0.75rem; }
+        .log-item { padding: 4px 0; border-bottom: 1px solid #222; }
+        .controles-edit { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; padding: 0 10px; }
+        .footer-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 10px; }
+        .btn-sm { background: #333; color: white; border: none; padding: 10px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+        .btn-lg { padding: 12px; border: none; border-radius: 6px; font-weight: bold; color: white; font-size: 0.8rem; }
+        .modal { display: none; position: fixed; top: 10%; left: 5%; width: 90%; background: white; color: black; padding: 20px; border-radius: 12px; z-index: 2000; box-shadow: 0 0 40px rgba(0,0,0,0.9); box-sizing: border-box; }
+        input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; color: black; background: #fff; }
+    </style>
+</head>
+<body>
+
+    <div id="modal-config" class="modal" style="display: block;">
+        <h2 style="margin:0 0 10px 0">Configurar Partido</h2>
+        <input type="text" id="name-p" placeholder="Nuestro Equipo" value="Local">
+        <input type="color" id="color-p" value="#2196F3" style="height:45px; padding:2px;">
+        <hr>
+        <input type="text" id="name-r" placeholder="Equipo Rival" value="Visitante">
+        <input type="color" id="color-r" value="#f44336" style="height:45px; padding:2px;">
+        <button onclick="iniciar()" style="width:100%; padding:15px; background:#2e7d32; color:white; border:none; border-radius:8px; font-weight:bold; margin-top:10px;">COMENZAR</button>
+    </div>
+
+    <div class="header">
+        <div class="score" id="marcador">0 - 0</div>
+        <button id="btn-ataque" class="btn-fase activo" onclick="setFase('ATAQUE')">ATAQUE</button>
+        <button id="btn-defensa" class="btn-fase" onclick="setFase('DEFENSA')">DEFENSA</button>
+    </div>
+
+    <div class="crono-bar">
+        <button onclick="toggleTimer()" id="play-pause" style="background:none; border:none; font-size: 1.2rem;">▶️</button>
+        <div class="time" id="time-display">00:00</div>
+        <button id="btn-match-status" class="btn-match-status" onclick="cambiarEstado()">Fin 1er Tiempo</button>
+    </div>
+
+    <div id="contenedor-campo">
+        <div class="linea-central"></div><div class="circulo-central"></div>
+        <div class="area-grande-arriba"></div><div class="area-chica-arriba"></div>
+        <div class="area-grande-abajo"></div><div class="area-chica-abajo"></div>
+        <div id="grilla-clicks"></div>
+    </div>
+
+    <div class="controles-edit">
+        <button class="btn-sm" onclick="deshacer()">⬅️ Deshacer</button>
+        <button class="btn-sm" onclick="rehacer()">Rehacer ➡️</button>
+        <button class="btn-sm" style="background:#ff9800; color:black;" onclick="abrirModal('modal-nota')">📝 Nota</button>
+    </div>
+
+    <div id="historial-log">Esperando inicio...</div>
+
+    <div class="footer-btns">
+        <button class="btn-lg" id="btn-calor" style="background:#444;" onclick="toggleCalor()">MAPA CALOR OFF</button>
+        <button class="btn-lg" style="background:#e91e63" onclick="prepararYAbrirGol()">⚽ GOL!</button>
+        <button class="btn-lg" style="background:#25D366" onclick="compartirWA()">WHATSAPP</button>
+        <button class="btn-lg" style="background:#4CAF50" onclick="exportarCSV()">EXCEL / CSV</button>
+    </div>
+
+    <div id="modal-gol" class="modal">
+        <h3 style="margin-top:0">Registrar Gol</h3>
+        <select id="gol-equipo-select"></select>
+        <input type="text" id="gol-autor" placeholder="Dorsal o Nombre">
+        <button onclick="guardarGol()" style="width:100%; padding:15px; background:#2e7d32; color:white; border:none; border-radius:8px; font-weight:bold; margin-top:10px;">CONFIRMAR GOL</button>
+        <button onclick="cerrarModales()" style="width:100%; margin-top:10px; border:none; background:none; color:red;">CANCELAR</button>
+    </div>
+
+    <div id="modal-nota" class="modal">
+        <h3 style="margin-top:0">Nota Tactica</h3>
+        <textarea id="texto-nota" placeholder="Escribe aqui..."></textarea>
+        <button onclick="guardarNota()" style="width:100%; padding:15px; background:#2e7d32; color:white; border:none; border-radius:8px; font-weight:bold;">GUARDAR</button>
+        <button onclick="cerrarModales()" style="width:100%; margin-top:5px; border:none; background:none; color:red;">CERRAR</button>
+    </div>
+
+    <script>
+        let config = { p: "", r: "", iniP: "", iniR: "", cP: "", cR: "" };
+        let fase = 'ATAQUE', segundos = 0, timer = null, eventos = [], marcador = { p: 0, r: 0 };
+        let stats = {}, calorActivo = false, estadoPartido = 1, partidoFinalizado = false;
+
+        function clean(t) { return t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/,/g, "."); }
+
+        function iniciar() {
+            config.p = clean(document.getElementById('name-p').value || "Local");
+            config.r = clean(document.getElementById('name-r').value || "Visitante");
+            config.iniP = config.p.charAt(0).toUpperCase();
+            config.iniR = config.r.charAt(0).toUpperCase();
+            config.cP = document.getElementById('color-p').value;
+            config.cR = document.getElementById('color-r').value;
+            
+            document.getElementById('btn-ataque').style.backgroundColor = config.cP;
+            document.getElementById('btn-defensa').style.backgroundColor = config.cR;
+            document.getElementById('btn-ataque').innerText = config.p;
+            document.getElementById('btn-defensa').innerText = config.r;
+            
+            actualizarMarcador();
+            document.getElementById('modal-config').style.display = 'none';
+            generarCampo();
+            actualizarSelectorGoles();
+        }
+
+        function generarCampo() {
+            const grilla = document.getElementById('grilla-clicks');
+            const vZ = ['Finalizacion', 'Creacion', 'Recuperacion'];
+            const hZ = ['Izq', 'Cen', 'Der'];
+            grilla.innerHTML = '';
+            vZ.forEach(v => {
+                hZ.forEach(h => {
+                    const id = `${v}-${h}`;
+                    stats[id] = { p: 0, r: 0 };
+                    const d = document.createElement('div');
+                    d.className = 'zona-click';
+                    d.id = `z-${id}`;
+                    d.innerHTML = `<span class="label-zona">${v.substring(0,3)} ${h}</span><div class="stat-incidencia" id="inc-${id}"></div>`;
+                    d.onclick = () => registrar(v, h);
+                    grilla.appendChild(d);
+                });
+            });
+        }
+
+        function registrar(v, h) {
+            if (partidoFinalizado || !timer) return;
+            const tipo = (fase === 'ATAQUE') ? 'PERDIDA' : 'RECUPERACION';
+            eventos.push({ v, h, fase, tipo, min: document.getElementById('time-display').innerText, tiempo: (estadoPartido===1 ? "1T" : "2T") });
+            stats[`${v}-${h}`][fase === 'ATAQUE' ? 'p' : 'r']++;
+            setFase(fase === 'ATAQUE' ? 'DEFENSA' : 'ATAQUE');
+            actualizarHistorial();
+            if(calorActivo) aplicarCalor();
+        }
+
+        function cambiarEstado() {
+            const btn = document.getElementById('btn-match-status');
+            if(estadoPartido === 1) {
+                if(confirm("Terminar Primer Tiempo? Se reiniciara el mapa de calor.")) {
+                    if(timer) toggleTimer();
+                    segundos = 0;
+                    document.getElementById('time-display').innerText = "00:00";
+                    btn.innerText = "Finalizar Partido";
+                    btn.style.background = "#f44336";
+                    estadoPartido = 2;
+                    generarCampo(); 
+                    if(calorActivo) resetVisualCalor();
+                }
+            } else {
+                if(confirm("Finalizar Partido?")) {
+                    if(timer) toggleTimer();
+                    partidoFinalizado = true;
+                    btn.innerText = "FINALIZADO";
+                    btn.disabled = true;
+                }
+            }
+        }
+
+        function aplicarCalor() {
+            let maxAcciones = 0;
+            Object.keys(stats).forEach(id => {
+                const total = stats[id].p + stats[id].r;
+                if (total > maxAcciones) maxAcciones = total;
+            });
+            Object.keys(stats).forEach(id => {
+                const total = stats[id].p + stats[id].r;
+                const celda = document.getElementById(`z-${id}`);
+                const inc = document.getElementById(`inc-${id}`);
+                if(total > 0) {
+                    const ratio = total / (maxAcciones || 1);
+                    const hue = Math.max(0, 60 - (ratio * 60)); 
+                    celda.style.background = `hsla(${hue}, 100%, 50%, 0.85)`;
+                    celda.querySelector('.label-zona').style.display = 'none';
+                    inc.style.display = 'block';
+                    inc.innerHTML = `${config.iniP}:${stats[id].p}<br>${config.iniR}:${stats[id].r}`;
+                }
+            });
+        }
+
+        function resetVisualCalor() {
+            Object.keys(stats).forEach(id => {
+                const celda = document.getElementById(`z-${id}`);
+                celda.style.background = "transparent";
+                celda.querySelector('.label-zona').style.display = 'block';
+                document.getElementById(`inc-${id}`).style.display = 'none';
+            });
+        }
+
+        function prepararYAbrirGol() { if (!partidoFinalizado) { actualizarSelectorGoles(); abrirModal('modal-gol'); } }
+        function actualizarSelectorGoles() { document.getElementById('gol-equipo-select').innerHTML = `<option value="p">${config.p}</option><option value="r">${config.r}</option>`; }
+
+        function guardarGol() {
+            const eq = document.getElementById('gol-equipo-select').value;
+            const aut = clean(document.getElementById('gol-autor').value || "SN");
+            if(eq === 'p') marcador.p++; else marcador.r++;
+            eventos.push({ tipo: 'GOL', equipo: eq==='p'?config.p:config.r, autor: aut, min: document.getElementById('time-display').innerText, tiempo: (estadoPartido===1 ? "1T" : "2T") });
+            actualizarMarcador(); actualizarHistorial(); cerrarModales();
+            document.getElementById('gol-autor').value = '';
+        }
+
+        function actualizarMarcador() { document.getElementById('marcador').innerText = `${config.p} ${marcador.p} - ${marcador.r} ${config.r}`; }
+        function setFase(f) { fase = f; document.getElementById('btn-ataque').classList.toggle('activo', f === 'ATAQUE'); document.getElementById('btn-defensa').classList.toggle('activo', f === 'DEFENSA'); }
+        function toggleTimer() { 
+            if(timer) { clearInterval(timer); timer = null; document.getElementById('play-pause').innerText = '▶️'; }
+            else { timer = setInterval(() => { segundos++; let m=Math.floor(segundos/60).toString().padStart(2,'0'), s=(segundos%60).toString().padStart(2,'0'); document.getElementById('time-display').innerText=`${m}:${s}`; }, 1000); document.getElementById('play-pause').innerText = '⏸️'; }
+        }
+        function actualizarHistorial() {
+            const log = document.getElementById('historial-log');
+            log.innerHTML = eventos.slice().reverse().map(e => `<div class="log-item">[${e.min}] ${e.tipo}: ${e.v||''}${e.equipo||''} (${e.tiempo})</div>`).join('');
+            log.scrollTop = 0;
+        }
+        function toggleCalor() {
+            calorActivo = !calorActivo;
+            document.getElementById('btn-calor').innerText = calorActivo ? "MAPA CALOR ON" : "MAPA CALOR OFF";
+            document.getElementById('btn-calor').style.background = calorActivo ? "#ff9800" : "#444";
+            if(!calorActivo) resetVisualCalor(); else aplicarCalor();
+        }
+        function guardarNota() {
+            const t = clean(document.getElementById('texto-nota').value);
+            if(!t) return;
+            eventos.push({ tipo: 'NOTA', texto: t, min: document.getElementById('time-display').innerText, tiempo: (estadoPartido===1 ? "1T" : "2T") });
+            document.getElementById('texto-nota').value = ''; actualizarHistorial(); cerrarModales();
+        }
+        function abrirModal(id) { document.getElementById(id).style.display = 'block'; }
+        function cerrarModales() { document.querySelectorAll('.modal').forEach(m => m.style.display='none'); }
+        function deshacer() { if(eventos.length>0) { let e=eventos.pop(); if(e.v) stats[`${e.v}-${e.h}`][e.fase==='ATAQUE'?'p':'r']--; actualizarHistorial(); if(calorActivo) aplicarCalor(); } }
+        
+        function compartirWA() {
+            let t = `REPORTE: ${config.p} ${marcador.p}-${marcador.r} ${config.r}\n\n`;
+            t += `PERDIDAS: ${eventos.filter(e=>e.tipo==='PERDIDA').length}\n`;
+            t += `RECUPERACIONES: ${eventos.filter(e=>e.tipo==='RECUPERACION').length}\n`;
+            window.location.href = "whatsapp://send?text=" + encodeURIComponent(t);
+        }
+
+        function exportarCSV() { 
+            let csv = "TIEMPO,MINUTO,EVENTO,ZONA,DETALLE\n"; 
+            eventos.forEach(e => { csv += `${e.tiempo},${e.min},${e.tipo},${e.v||''}-${e.h||''},${e.autor||e.texto||''}\n`; }); 
+            let blob = new Blob([csv], {type: 'text/csv'});
+            let url = URL.createObjectURL(blob);
+            let a = document.createElement('a'); 
+            a.href = url; 
+            a.download = `Scouting_${config.p}_vs_${config.r}.csv`; 
+            a.click();
+        }
+    </script>
+</body>
+</html>
